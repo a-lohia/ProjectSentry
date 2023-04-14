@@ -67,8 +67,8 @@ class UFPRPlateDataset:
 
         _training_features = [
             read_image_txt(
-                os.path.join(self.paths["training"], f"track{training_id[5:9]}", training_id.replace(".png", ".txt"))
-            ) for training_id in _training_ids
+                os.path.join(self.paths["training"], f"track{training_id[5:9]}", training_id)
+            ) for training_id in _training_ids if (".txt" in training_id)
         ]
 
         _training_ids = [re.sub("[^0123456789]", "", i) for i in _training_ids]
