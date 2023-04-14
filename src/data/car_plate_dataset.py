@@ -17,6 +17,13 @@ def read_image_txt(image_id: str, ) -> Union[List, tuple]:
         plate = txt[7]  # line 7 has bounding box location for licence plate
 
         plate = ''.join(i for i in plate if i.isdigit() or i == " ")
+        # print(plate.replace(" ", "", 1).split(" "))
+
+        # removing all extra spaces at the end
+        while plate[-1] == " ":
+            plate = plate[:-1]
+
+        # convert all the numbers into list items except the first space
         temp_list = [int(i) for i in plate.replace(" ", "", 1).split(" ")]
         # plate_date = (x_min, y_min, x_max, y_max)
         plate_data = (temp_list[0], temp_list[1], temp_list[0] + temp_list[2], temp_list[1] + temp_list[3])
@@ -45,6 +52,8 @@ class UFPRPlateDataset:
         self.validation_set = {}
 
         self._setup_training_data()
+        self._setup_testing_data()
+        self._setup_validation_data()
 
     def _setup_training_data(self):
         """Run once on initialization of the database object"""
@@ -75,4 +84,61 @@ class UFPRPlateDataset:
 
         self.training_set = {photo_id: feature for photo_id, feature in zip(_training_ids, _training_features)}
 
+    def _setup_testing_data(self):
+        """Run once on initialization of the database object"""
+        print(self.paths)
+        os.chdir("C:/Users/Arya/workspace/ProjectSentry/data/raw/UFPR-ALPR dataset")
+
+        # dictionary which has values of lists of sets of pictures
+        image_sets = {i: os.listdir(j) for i, j in zip(self.paths.keys(), self.paths.values())}
+
+        # each image is labeled in the format:
+        # track####[##].png (with an accompanying track####[##].txt
+
+        # filters out the "track" from each folder name
+        _testing_cars = [re.sub("[^0123456789]", "", i) for i in image_sets['testing']]
+
+        # list of id paths in the training set
+        _testing_ids = []
+        for car in _testing_cars:
+            _testing_ids.extend(os.listdir(os.path.join(self.paths['testing'], f"track{car}")))
+
+        _testing_features = [
+            read_image_txt(
+                os.path.join(self.paths["testing"], f"track{testing_id[5:9]}", testing_id)
+            ) for testing_id in _testing_ids if (".txt" in testing_id)
+        ]
+
+        _testing_ids = [re.sub("[^0123456789]", "", i) for i in _testing_ids]
+
+        self.testing_set = {photo_id: feature for photo_id, feature in zip(_testing_ids, _testing_features)}
+
+    def _setup_validation_data(self):
+        """Run once on initialization of the database object"""
+        print(self.paths)
+        os.chdir("C:/Users/Arya/workspace/ProjectSentry/data/raw/UFPR-ALPR dataset")
+
+        # dictionary which has values of lists of sets of pictures
+        image_sets = {i: os.listdir(j) for i, j in zip(self.paths.keys(), self.paths.values())}
+
+        # each image is labeled in the format:
+        # track####[##].png (with an accompanying track####[##].txt
+
+        # filters out the "track" from each folder name
+        _validation_cars = [re.sub("[^0123456789]", "", i) for i in image_sets['validation']]
+
+        # list of id paths in the training set
+        _validation_ids = []
+        for car in _validation_cars:
+            _validation_ids.extend(os.listdir(os.path.join(self.paths['validation'], f"track{car}")))
+
+        _validation_features = [
+            read_image_txt(
+                os.path.join(self.paths["validation"], f"track{validation_id[5:9]}", validation_id)
+            ) for validation_id in _validation_ids if (".txt" in validation_id)
+        ]
+
+        _validation_ids = [re.sub("[^0123456789]", "", i) for i in _validation_ids]
+
+        self.testing_set = {photo_id: feature for photo_id, feature in zip(_validation_ids, _validation_features)}
 
