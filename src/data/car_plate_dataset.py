@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Union, List, Dict
 import os
 import re
+import glob
 
 
 def read_image_txt(image_id: str, ) -> Union[List, tuple]:
@@ -29,6 +30,23 @@ def read_image_txt(image_id: str, ) -> Union[List, tuple]:
         plate_data = (temp_list[0], temp_list[1], temp_list[0] + temp_list[2], temp_list[1] + temp_list[3])
 
     return list(lp)[:-1], plate_data
+
+
+def id_to_filepath(_id: str) -> str:
+    """
+    returns the absolute filepath (str) of a photo with 6-digit id ("XXXXUU") for use during training
+    :param _id: string "XXXXUU"
+    :return file: string absolute filepath
+    """
+    assert(len(_id) == 6)
+    track = _id[:4]
+    photo_num = _id[4:]
+    file = glob.glob(
+        f"C:\\Users\\Arya\\workspace\\ProjectSentry\\data\\raw\\UFPR-ALPR dataset/**/*{track}[[]{photo_num}[]].png",
+        recursive=True
+    )[0]
+
+    return file
 
 
 class UFPRPlateDataset:
@@ -154,3 +172,6 @@ class UFPRPlateDataset:
         # dictionary that maps validation id to features for each photo
         self.testing_set = {photo_id: feature for photo_id, feature in zip(_validation_ids, _validation_features)}
         print("finished setting up validation data")
+
+
+

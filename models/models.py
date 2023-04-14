@@ -9,7 +9,7 @@ import pytorch_lightning as pl
 
 """
 
-    LPCNN V1
+    LPCNN V1 - detects license plate bounding boxes in images (single-task learning problem)
     --------
     Convolutional Layer -> ReLU -> Conv. Layer -> ReLU -> MaxPool -> Dense/Fully Connected with ReLU -> Softmax (licence plate or not)
 
