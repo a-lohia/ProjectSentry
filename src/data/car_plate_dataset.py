@@ -9,7 +9,7 @@ def read_image_txt(image_id: str, ) -> Union[List, tuple]:
     :param image_id: in the format of: "track####[##].txt"
     :return: Union[List(Licence Plate Characters), Plate_Boundary: Tuple(Xmin, Ymin, Xmax, Ymax)]
     """
-    print(image_id)
+    # print(image_id)
     with open(image_id, "r") as txt_file:
         txt = txt_file.readlines()
 
@@ -51,13 +51,15 @@ class UFPRPlateDataset:
         self.testing_set = {}
         self.validation_set = {}
 
+        print(f"setting up on paths: {self.paths}")
         self._setup_training_data()
         self._setup_testing_data()
         self._setup_validation_data()
 
+        print("setup complete. the UFPR-ALPR dataset is now ready for use!")
+
     def _setup_training_data(self):
         """Run once on initialization of the database object"""
-        print(self.paths)
         os.chdir("C:/Users/Arya/workspace/ProjectSentry/data/raw/UFPR-ALPR dataset")
 
         # dictionary which has values of lists of sets of pictures
@@ -74,19 +76,23 @@ class UFPRPlateDataset:
         for car in _training_cars:
             _training_ids.extend(os.listdir(os.path.join(self.paths['training'], f"track{car}")))
 
+        # list of the features corresponding to each training id ("XXXXUU" 4-digit number plus 2-digit photo #)
+        # for each car
         _training_features = [
             read_image_txt(
                 os.path.join(self.paths["training"], f"track{training_id[5:9]}", training_id)
             ) for training_id in _training_ids if (".txt" in training_id)
         ]
 
+        # list of training ids for each car ("XXXXUU" 4-digit number plus 2-digit photo #)
         _training_ids = [re.sub("[^0123456789]", "", i) for i in _training_ids]
 
+        # dictionary that maps training id to features for each photo
         self.training_set = {photo_id: feature for photo_id, feature in zip(_training_ids, _training_features)}
+        print("finished setting up training data")
 
     def _setup_testing_data(self):
         """Run once on initialization of the database object"""
-        print(self.paths)
         os.chdir("C:/Users/Arya/workspace/ProjectSentry/data/raw/UFPR-ALPR dataset")
 
         # dictionary which has values of lists of sets of pictures
@@ -103,6 +109,8 @@ class UFPRPlateDataset:
         for car in _testing_cars:
             _testing_ids.extend(os.listdir(os.path.join(self.paths['testing'], f"track{car}")))
 
+        # list of the features corresponding to each testing id ("XXXXUU" 4-digit number plus 2-digit photo #)
+        # for each car
         _testing_features = [
             read_image_txt(
                 os.path.join(self.paths["testing"], f"track{testing_id[5:9]}", testing_id)
@@ -111,11 +119,12 @@ class UFPRPlateDataset:
 
         _testing_ids = [re.sub("[^0123456789]", "", i) for i in _testing_ids]
 
+        # dictionary that maps testing id to features for each photo
         self.testing_set = {photo_id: feature for photo_id, feature in zip(_testing_ids, _testing_features)}
+        print("finished setting up testing data")
 
     def _setup_validation_data(self):
         """Run once on initialization of the database object"""
-        print(self.paths)
         os.chdir("C:/Users/Arya/workspace/ProjectSentry/data/raw/UFPR-ALPR dataset")
 
         # dictionary which has values of lists of sets of pictures
@@ -132,6 +141,8 @@ class UFPRPlateDataset:
         for car in _validation_cars:
             _validation_ids.extend(os.listdir(os.path.join(self.paths['validation'], f"track{car}")))
 
+        # list of the features corresponding to each validation id ("XXXXUU" 4-digit number plus 2-digit photo #)
+        # for each car
         _validation_features = [
             read_image_txt(
                 os.path.join(self.paths["validation"], f"track{validation_id[5:9]}", validation_id)
@@ -140,5 +151,6 @@ class UFPRPlateDataset:
 
         _validation_ids = [re.sub("[^0123456789]", "", i) for i in _validation_ids]
 
+        # dictionary that maps validation id to features for each photo
         self.testing_set = {photo_id: feature for photo_id, feature in zip(_validation_ids, _validation_features)}
-
+        print("finished setting up validation data")
