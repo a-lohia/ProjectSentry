@@ -3,6 +3,7 @@ from typing import Union, List, Dict
 import os
 import re
 import glob
+import numpy as np
 
 
 def read_image_txt(image_id: str, ) -> Union[List, tuple]:
@@ -27,7 +28,7 @@ def read_image_txt(image_id: str, ) -> Union[List, tuple]:
         # convert all the numbers into list items except the first space
         temp_list = [int(i) for i in plate.replace(" ", "", 1).split(" ")]
         # plate_date = (x_min, y_min, x_max, y_max)
-        plate_data = (temp_list[0], temp_list[1], temp_list[0] + temp_list[2], temp_list[1] + temp_list[3])
+        plate_data = np.array([temp_list[0], temp_list[1], temp_list[0] + temp_list[2], temp_list[1] + temp_list[3]], dtype=np.int32)
 
     return list(lp)[:-1], plate_data
 
@@ -48,7 +49,7 @@ def id_to_filepath(_id: str) -> str:
 
     return file
 
-
+# TODO: Implement this into a pytorch Database https://pytorch.org/tutorials/beginner/basics/data_tutorial.html
 class UFPRPlateDataset:
     """
     Class to make accessing data from UFPR Plate Dataset easy

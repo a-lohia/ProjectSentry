@@ -40,10 +40,10 @@ class LPCNNv1(pl.LightningModule):
         self.dense = nn.Linear(in_features=, out_features=)
         self.rel3 = nn.ReLU()
 
-        self.softmax = nn.Softmax()
+        self.bounding_box = nn.Sequential(nn.BatchNorm1d(512), nn.Linear(512, 4))
 
 
-    def __call__(self, x):
+    def forward(self, x):
         """
 
         :param x: Image (1920, 1080, 3)
@@ -53,5 +53,22 @@ class LPCNNv1(pl.LightningModule):
         out = self.rel2(self.conv2(out))
         out = self.pool(out)
         out = self.rel3(self.dense(self.flatten(out)))
-        out = self.softmax(out)
-        return out
+        return self.bounding_box(out)
+
+    def training_step(self, batch_idx):
+
+        x, target_bb = batch
+
+        predicted_bb = self.model(x)
+        # L1 loss
+        loss = F.l1_loss(predicted_bb, target_bb, )
+
+        # logs metrics for each training_step,
+        # and the average across the epoch, to the progress bar and logger
+        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=.02)
+
+
