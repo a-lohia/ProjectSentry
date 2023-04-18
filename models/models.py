@@ -14,16 +14,18 @@ import pytorch_lightning as pl
     Convolutional Layer -> ReLU -> Conv. Layer -> ReLU -> MaxPool -> Dense/Fully Connected with ReLU -> Softmax (licence plate or not)
 
 """
+
+
 class LPCNNv1(pl.LightningModule):
     def __init__(self):
         super().__init__()
 
         self.conv1 = nn.Conv2d(
-            in_channels=3,
+            in_channels=1,
             out_channels=32,
             kernel_size=5,
         )
-        torch.nn.init.xavier_uniform(self.conv1.weight)
+        torch.nn.init.xavier_uniform_(self.conv1.weight)
         self.rel1 = nn.ReLU()
 
         self.conv2 = nn.Conv2d(
@@ -31,17 +33,16 @@ class LPCNNv1(pl.LightningModule):
             out_channels=64,
             kernel_size=5,
         )
-        torch.nn.init.xavier_uniform(self.conv2.weight)
+        torch.nn.init.xavier_uniform_(self.conv2.weight)
         self.rel2 = nn.ReLU()
 
         self.pool = nn.MaxPool2d(kernel_size=2)
 
         self.flatten = nn.Flatten()
-        self.dense = nn.Linear(in_features=, out_features=)
+        self.dense = nn.Linear(in_features=7015424, out_features=128)
         self.rel3 = nn.ReLU()
 
-        self.bounding_box = nn.Sequential(nn.BatchNorm1d(512), nn.Linear(512, 4))
-
+        self.bounding_box = nn.Sequential(nn.BatchNorm1d(128), nn.Linear(128, 4))
 
     def forward(self, x):
         """
@@ -55,10 +56,8 @@ class LPCNNv1(pl.LightningModule):
         out = self.rel3(self.dense(self.flatten(out)))
         return self.bounding_box(out)
 
-    def training_step(self, batch_idx):
-
+    def training_step(self, batch, batch_idx):
         x, target_bb = batch
-
         predicted_bb = self.model(x)
         # L1 loss
         loss = F.l1_loss(predicted_bb, target_bb, )
@@ -70,5 +69,3 @@ class LPCNNv1(pl.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=.02)
-
-

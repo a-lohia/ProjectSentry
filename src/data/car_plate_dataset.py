@@ -3,7 +3,12 @@ from typing import Union, List, Dict
 import os
 import re
 import glob
+
+import PIL
 import numpy as np
+from torch.utils.data import DataLoader, Dataset
+import cv2
+from PIL import Image
 
 
 def read_image_txt(image_id: str, ) -> Union[List, tuple]:
@@ -28,7 +33,8 @@ def read_image_txt(image_id: str, ) -> Union[List, tuple]:
         # convert all the numbers into list items except the first space
         temp_list = [int(i) for i in plate.replace(" ", "", 1).split(" ")]
         # plate_date = (x_min, y_min, x_max, y_max)
-        plate_data = np.array([temp_list[0], temp_list[1], temp_list[0] + temp_list[2], temp_list[1] + temp_list[3]], dtype=np.int32)
+        plate_data = np.array([temp_list[0], temp_list[1], temp_list[0] + temp_list[2], temp_list[1] + temp_list[3]],
+                              dtype=np.int32)
 
     return list(lp)[:-1], plate_data
 
@@ -39,7 +45,7 @@ def id_to_filepath(_id: str) -> str:
     :param _id: string "XXXXUU"
     :return file: string absolute filepath
     """
-    assert(len(_id) == 6)
+    assert (len(_id) == 6)
     track = _id[:4]
     photo_num = _id[4:]
     file = glob.glob(
@@ -49,7 +55,40 @@ def id_to_filepath(_id: str) -> str:
 
     return file
 
-# TODO: Implement this into a pytorch Database https://pytorch.org/tutorials/beginner/basics/data_tutorial.html
+
+def create_mask(bb, x):
+    """Creates a mask for the bounding box of same shape as image"""
+    # print(bb)
+    rows, cols, *_ = x.shape
+    Y = np.zeros((rows, cols))
+    # bb = bb.astype(np.int)
+    Y[bb[1]:bb[3] + 1, bb[0]:bb[2] + 1] = 1
+    return Y
+
+
+def mask_to_bb(Y):
+    """Convert mask Y to a bounding box, assumes 0 as background nonzero object"""
+    cols, rows = np.nonzero(Y)
+    if len(cols) == 0:
+        return np.zeros(4, dtype=np.float32)
+    x_min = np.min(rows)
+    y_min = np.min(cols)
+    x_max = np.max(rows)
+    y_max = np.max(cols)
+    return np.array([x_min, y_min, x_max, y_max], dtype=np.int32)
+
+
+def resize_image_bb(image: PIL.Image, bb, sz):
+    # write_path,
+    """Resize an image and its bounding box and write image to new path"""
+    im = np.asarray(image)
+    # print(im.shape)
+    im_resized = cv2.resize(im, (int((16 / 9) * sz), sz))
+    Y_resized = cv2.resize(create_mask(bb, im), (int((16 / 9) * sz), sz))
+    # new_path = str(write_path/read_path.parts[-1])
+    # cv2.imwrite(new_path, cv2.cvtColor(im_resized, cv2.COLOR_RGB2BGR))
+    return im_resized, mask_to_bb(Y_resized)
+
 class UFPRPlateDataset:
     """
     Class to make accessing data from UFPR Plate Dataset easy
@@ -175,4 +214,67 @@ class UFPRPlateDataset:
         print("finished setting up validation data")
 
 
+# Good one. Use with Pytorch Dataloader. Don't use the previous one
+class UFPRDataset(Dataset):
+    def __init__(self, dataset_dir, grayscale=None, resize=None):
+        self.resize = resize
+        self.grayscale = grayscale
+        self.dataset_dir = dataset_dir
 
+        # Dict[int(Image_Id) -> Tuple(Licence Plate #, Licence Plate Coords)]
+        self.ids = []
+        self.labels = {}
+
+        self._setup()
+
+    def __len__(self):
+        return len(self.ids)
+
+    def __getitem__(self, idx):
+        img_path = id_to_filepath(self.ids[idx])
+        image = Image.open(img_path)
+        label = self.labels[self.ids[idx]]
+
+        if self.resize:
+            image = self.resize(image)
+            # resizes the coordinates of the bounding box
+            label = label[0], mask_to_bb(self.resize(Image.fromarray(create_mask(label[1], np.asarray(image)))))
+
+        if self.grayscale:
+            image = self.grayscale(image)
+
+        return image, label, img_path
+
+    def _setup(self):
+        os.chdir(self.dataset_dir)
+
+        # each image is labeled in the format:
+        # track####[##].png (with an accompanying track####[##].txt
+
+        # filters out the "track" from each folder name
+        _training_cars = [re.sub("[^0123456789]", "", i) for i in (os.listdir(self.dataset_dir))]
+
+        # list of id paths in the training set
+        _training_ids_and_txt = []
+
+        for car in _training_cars:
+            _training_ids_and_txt.extend(os.listdir(os.path.join(self.dataset_dir, f"track{car}")))
+            # print(f"{_training_ids} + \n")
+
+        # list of the features corresponding to each training id ("XXXXUU" 4-digit number plus 2-digit photo #)
+        # for each car
+        _training_features = [
+            read_image_txt(
+                os.path.join(self.dataset_dir, f"track{training_id[5:9]}", training_id)
+            ) for training_id in _training_ids_and_txt if (".txt" in training_id)
+        ]
+
+        _training_ids = [training_id for training_id in _training_ids_and_txt if (".png" in training_id)]
+
+        # list of training ids for each car ("XXXXUU" 4-digit number plus 2-digit photo #)
+        _training_ids = [re.sub("[^0123456789]", "", i) for i in _training_ids]
+
+        self.ids = _training_ids
+        # dictionary that maps training id to features for each photo
+        self.labels = {photo_id: feature for photo_id, feature in zip(_training_ids, _training_features)}
+        print("finished setting up data")
