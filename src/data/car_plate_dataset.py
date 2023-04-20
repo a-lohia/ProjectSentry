@@ -9,6 +9,7 @@ import numpy as np
 from torch.utils.data import DataLoader, Dataset
 import cv2
 from PIL import Image
+import torch
 
 
 def read_image_txt(image_id: str, ) -> Union[List, tuple]:
@@ -35,7 +36,7 @@ def read_image_txt(image_id: str, ) -> Union[List, tuple]:
         # plate_date = (x_min, y_min, x_max, y_max)
         plate_data = np.array([temp_list[0], temp_list[1], temp_list[0] + temp_list[2], temp_list[1] + temp_list[3]],
                               dtype=np.int32)
-
+    # print(f"{lp[:-1]} {plate_data}")
     return list(lp)[:-1], plate_data
 
 
@@ -232,18 +233,20 @@ class UFPRDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = id_to_filepath(self.ids[idx])
-        image = Image.open(img_path)
-        label = self.labels[self.ids[idx]]
+        image = np.asarray(Image.open(img_path))
+        label = self.labels[str(self.ids[idx])]
 
         if self.resize:
-            image = self.resize(image)
-            # resizes the coordinates of the bounding box
-            label = label[0], mask_to_bb(self.resize(Image.fromarray(create_mask(label[1], np.asarray(image)))))
+            # computes new label (new bounding box coords) (from old image size) then resizes image
+            label = label[0], mask_to_bb(self.resize(Image.fromarray(create_mask(label[1], image))))
+            image = np.asarray(self.resize(Image.fromarray(image)))
 
         if self.grayscale:
-            image = self.grayscale(image)
+            image = np.asarray(self.grayscale(Image.fromarray(image)))
 
-        return image, label, img_path
+        image = torch.tensor(image, dtype=torch.float32)
+
+        return image, label
 
     def _setup(self):
         os.chdir(self.dataset_dir)
@@ -253,12 +256,14 @@ class UFPRDataset(Dataset):
 
         # filters out the "track" from each folder name
         _training_cars = [re.sub("[^0123456789]", "", i) for i in (os.listdir(self.dataset_dir))]
+        # print(_training_cars)
 
         # list of id paths in the training set
         _training_ids_and_txt = []
 
         for car in _training_cars:
-            _training_ids_and_txt.extend(os.listdir(os.path.join(self.dataset_dir, f"track{car}")))
+            if car.isdigit():
+                _training_ids_and_txt.extend(os.listdir(os.path.join(self.dataset_dir, f"track{car}")))
             # print(f"{_training_ids} + \n")
 
         # list of the features corresponding to each training id ("XXXXUU" 4-digit number plus 2-digit photo #)

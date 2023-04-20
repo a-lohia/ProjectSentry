@@ -6,6 +6,7 @@ from torchvision import transforms
 from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from torchvision.transforms import ToTensor
 
 """
 
@@ -39,10 +40,12 @@ class LPCNNv1(pl.LightningModule):
         self.pool = nn.MaxPool2d(kernel_size=2)
 
         self.flatten = nn.Flatten()
-        self.dense = nn.Linear(in_features=7015424, out_features=128)
+        self.dense = nn.Linear(in_features=108240, out_features=128)
         self.rel3 = nn.ReLU()
 
         self.bounding_box = nn.Sequential(nn.BatchNorm1d(128), nn.Linear(128, 4))
+
+        self.toTensor = ToTensor()
 
     def forward(self, x):
         """
@@ -50,20 +53,38 @@ class LPCNNv1(pl.LightningModule):
         :param x: Image (1920, 1080, 3)
         :return: float; (0, 1) about whether a plate was detected
         """
+        # print(x.shape)
         out = self.rel1(self.conv1(x))
+        # print(out.shape)
         out = self.rel2(self.conv2(out))
+        # print(out.shape)
         out = self.pool(out)
-        out = self.rel3(self.dense(self.flatten(out)))
-        return self.bounding_box(out)
+        # print(out.shape)
+
+        out = self.flatten(out)
+        # print(out.shape)
+        out = self.rel3(self.dense(out))
+
+        # print(out.shape)
+        out = self.bounding_box(out)
+        # print(out.shape)
+        return out
 
     def training_step(self, batch, batch_idx):
+        # print(batch[0].shape)
+        # print(batch[1])
         x, target_bb = batch
-        predicted_bb = self.model(x)
+        # print(type(x))
+        predicted_bb = self(x).mean(axis=0)
+        print(predicted_bb)
+        # print(predicted_bb.shape)
+        print(target_bb[1])
         # L1 loss
-        loss = F.l1_loss(predicted_bb, target_bb, )
+        loss = F.l1_loss(predicted_bb, target_bb[1])
 
         # logs metrics for each training_step,
         # and the average across the epoch, to the progress bar and logger
+        print(loss)
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
