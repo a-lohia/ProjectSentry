@@ -53,7 +53,7 @@ class LPCNNv1(pl.LightningModule):
         :param x: Image (1920, 1080, 3)
         :return: float; (0, 1) about whether a plate was detected
         """
-        # print(x.shape)
+        print(x.shape)
         out = self.rel1(self.conv1(x))
         # print(out.shape)
         out = self.rel2(self.conv2(out))
