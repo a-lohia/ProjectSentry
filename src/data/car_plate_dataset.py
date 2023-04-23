@@ -6,10 +6,13 @@ import glob
 
 import PIL
 import numpy as np
+import torchvision
+from matplotlib import patches
 from torch.utils.data import DataLoader, Dataset
 import cv2
 from PIL import Image
 import torch
+import matplotlib.pyplot as plt
 
 
 def read_image_txt(image_id: str, ) -> Union[List, tuple]:
@@ -57,6 +60,35 @@ def id_to_filepath(_id: str) -> str:
     return file
 
 
+def annotate_frame_with_bb(image: PIL.Image, bounding_box, *args):
+    """
+    :param image: PIL Image
+    :param bounding_box: Tuple(x_min, y_min, x_max, y_max)
+    :param args: torchvision.transforms."transform" (i.e. resize or grayscale)
+    :return: fig, ax
+    """
+
+    for T in args:
+        image = Image.fromarray(np.asarray(T(image)))
+
+    fig, ax = plt.subplots()
+    ax.imshow(image, cmap='gray')
+
+    image = torch.tensor(np.asarray(image), dtype=torch.float32)
+
+    bb = bounding_box  # model(image[None, :]).detach().mean(axis=0)
+    x_min, y_min, x_max, y_max = bb
+    rect = patches.Rectangle(
+        (x_min, y_min), x_max - x_min, y_max - y_min,
+        linewidth=.5,
+        edgecolor='r',
+        facecolor='none'
+    )
+    ax.add_patch(rect)
+
+    return fig, ax
+
+
 def create_mask(bb, x):
     """Creates a mask for the bounding box of same shape as image"""
     # print(bb)
@@ -90,7 +122,8 @@ def resize_image_bb(image: PIL.Image, bb, sz):
     # cv2.imwrite(new_path, cv2.cvtColor(im_resized, cv2.COLOR_RGB2BGR))
     return im_resized, mask_to_bb(Y_resized)
 
-class UFPRPlateDataset:
+
+'''class UFPRPlateDataset:
     """
     Class to make accessing data from UFPR Plate Dataset easy
     """
@@ -213,9 +246,11 @@ class UFPRPlateDataset:
         # dictionary that maps validation id to features for each photo
         self.testing_set = {photo_id: feature for photo_id, feature in zip(_validation_ids, _validation_features)}
         print("finished setting up validation data")
+'''
 
 
 # Good one. Use with Pytorch Dataloader. Don't use the previous one
+
 class UFPRDataset(Dataset):
     def __init__(self, dataset_dir, grayscale=None, resize=None):
         self.resize = resize

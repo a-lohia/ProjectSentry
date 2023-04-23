@@ -88,5 +88,17 @@ class LPCNNv1(pl.LightningModule):
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
+    def test_step(self, batch, batch_idx):
+        x, target_bb = batch
+        predicted_bb = self(x).mean(axis=0)
+        loss = F.l1_loss(predicted_bb, target_bb[1])
+        self.log("test_loss", loss)
+
+    def validation_step(self, batch, batch_idx):
+        x, target_bb = batch
+        predicted_bb = self(x).mean(axis=0)
+        loss = F.l1_loss(predicted_bb, target_bb[1])
+        self.log("val_loss", loss)
+
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=.02)
