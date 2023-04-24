@@ -53,7 +53,7 @@ class LPCNNv1(pl.LightningModule):
         :param x: Image (1920, 1080, 3)
         :return: float; (0, 1) about whether a plate was detected
         """
-        print(x.shape)
+        # print(x.shape)
         out = self.rel1(self.conv1(x))
         # print(out.shape)
         out = self.rel2(self.conv2(out))
@@ -76,15 +76,15 @@ class LPCNNv1(pl.LightningModule):
         x, target_bb = batch
         # print(type(x))
         predicted_bb = self(x).mean(axis=0)
-        print(predicted_bb)
+        # print(predicted_bb)
         # print(predicted_bb.shape)
-        print(target_bb[1])
+        # print(target_bb[1])
         # L1 loss
         loss = F.l1_loss(predicted_bb, target_bb[1])
 
         # logs metrics for each training_step,
         # and the average across the epoch, to the progress bar and logger
-        print(loss)
+        # print(loss)
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
