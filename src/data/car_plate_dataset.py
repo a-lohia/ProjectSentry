@@ -53,7 +53,7 @@ def id_to_filepath(_id: str) -> str:
     track = _id[:4]
     photo_num = _id[4:]
     file = glob.glob(
-        f"C:\\Users\\Arya\\PycharmProjects\\projectSentry\\ProjectSentry\\data\\raw\\UFPR-ALPR dataset/**/*{track}[[]{photo_num}[]].png",
+        f"C:\\Users\\Arya\\workspace\\ProjectSentry\\data\\raw\\UFPR-ALPR dataset/**/*{track}[[]{photo_num}[]].png",
         recursive=True
     )[0]
 
@@ -63,7 +63,7 @@ def id_to_filepath(_id: str) -> str:
 def annotate_frame_with_bb(image: PIL.Image, bounding_box_model, *args):
     """
     :param image: PIL Image
-    :param bounding_box: Tuple(x_min, y_min, x_max, y_max)
+    :param bounding_box_model: Tuple(x_min, y_min, x_max, y_max)
     :param args: torchvision.transforms."transform" (i.e. resize or grayscale)
     :return: fig, ax
     """
@@ -77,6 +77,7 @@ def annotate_frame_with_bb(image: PIL.Image, bounding_box_model, *args):
     image = torch.tensor(np.asarray(image), dtype=torch.float32)
 
     bb = bounding_box_model(image[None, :]).detach().mean(axis=0)  # model(image[None, :]).detach().mean(axis=0)
+    print(bb)
     x_min, y_min, x_max, y_max = bb
     rect = patches.Rectangle(
         (x_min, y_min), x_max - x_min, y_max - y_min,

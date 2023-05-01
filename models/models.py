@@ -3,10 +3,10 @@ import torch
 from torch import optim, nn, utils, Tensor
 import torch.nn.functional as F
 from torchvision import transforms
-from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from torchvision.transforms import ToTensor
+from pytorch_lightning import loggers
 
 """
 
@@ -91,7 +91,7 @@ class LPCNNv1(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         x, target_bb = batch
         predicted_bb = self(x).mean(axis=0)
-        loss = F.l1_loss(predicted_bb, target_bb[1])
+        loss = F.l1_loss(predicted_bb, torch.flatten(target_bb[1]))
         self.log("test_loss", loss)
 
     def validation_step(self, batch, batch_idx):
@@ -102,3 +102,12 @@ class LPCNNv1(pl.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=.02)
+
+    def on_train_batch_end(self, outputs, batch, batch_idx):
+        tensorboard = self.logger.experiment.add_scalar("Loss/Train", outputs["loss"], batch_idx)
+        batch_dictionary = {
+            'loss': outputs["loss"]
+        }
+        return batch_dictionary
+
+
