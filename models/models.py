@@ -30,7 +30,7 @@ class LPCNNv1(pl.LightningModule):
             nn.ReLU(),
             nn.Conv2d(
                 in_channels=32,
-                out_channels=64,
+                out_channels=32,
                 kernel_size=5,
                 stride=2
             ),
@@ -43,7 +43,7 @@ class LPCNNv1(pl.LightningModule):
         self.flatten = nn.Flatten()
 
         self.fc1 = nn.Sequential(
-            nn.Linear(in_features=1731840, out_features=4096),
+            nn.Linear(in_features=865920, out_features=4096),
             nn.ReLU()
         )
 
@@ -61,7 +61,7 @@ class LPCNNv1(pl.LightningModule):
 
     @torch.no_grad()
     def init_weights(self, m):
-        print(m)
+        # print(m)
         if type(m) == nn.Conv2d:
             # print(m.weight)
             torch.nn.init.xavier_uniform_(m.weight)
@@ -84,7 +84,7 @@ class LPCNNv1(pl.LightningModule):
         out = self.fc2(out)
 
         print(out.shape)
-        out = self.bounding_box(out)
+        out = self.bounding_box(torch.flatten(out))
         print(out.shape)
         return out
 
