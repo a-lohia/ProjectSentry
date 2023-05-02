@@ -141,7 +141,6 @@ def resize_image_bb(image: PIL.Image, bb, sz):
     return im_resized, mask_to_bb(Y_resized)
 
 
-
 # Good one. Use with Pytorch Dataloader. Don't use the previous one
 
 class UFPRDataset(Dataset):
@@ -173,6 +172,9 @@ class UFPRDataset(Dataset):
             image = np.asarray(self.grayscale(Image.fromarray(image)))
 
         image = torch.tensor(image, dtype=torch.float32)
+
+        if not self.grayscale:
+            image = image.permute(2, 0, 1)
 
         return image, label
 
