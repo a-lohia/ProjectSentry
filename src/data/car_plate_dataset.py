@@ -61,7 +61,7 @@ def id_to_filepath(_id: str) -> str:
     return file
 
 
-def annotate_frame_with_bb(image: PIL.Image, image_id: str, bounding_box_model, resize, *args):
+def annotate_frame_with_bb(image: PIL.Image, bounding_box_model, resize,  image_id: str = None, *args):
     """
     :param image: PIL Image
     :param image_id: String
@@ -74,26 +74,28 @@ def annotate_frame_with_bb(image: PIL.Image, image_id: str, bounding_box_model, 
     fig, ax = plt.subplots()
     t_image = image
     for T in args:
-        t_image = T(image)
+        t_image = T(torchvision.transforms.ToTensor()(t_image))
 
     t_image = resize(t_image)
+    n_image = resize(image)
 
-    _, true_bb = read_image_txt(f"{image_id}.txt")
-    real_bb = mask_to_bb(resize(Image.fromarray(create_mask(true_bb, np.asarray(image)))))
-    print(f"True (blue): {real_bb}")
-    x_min, y_min, x_max, y_max = real_bb
-    rect = patches.Rectangle(
-        (x_min, y_min), x_max - x_min, y_max - y_min,
-        linewidth=.5,
-        edgecolor='b',
-        facecolor='none'
-    )
-    ax.add_patch(rect)
+    if image_id is not None:
+        _, true_bb = read_image_txt(f"{image_id}.txt")
+        real_bb = mask_to_bb(resize(Image.fromarray(create_mask(true_bb, np.asarray(image)))))
+        print(f"True (blue): {real_bb}")
+        x_min, y_min, x_max, y_max = real_bb
+        rect = patches.Rectangle(
+            (x_min, y_min), x_max - x_min, y_max - y_min,
+            linewidth=.5,
+            edgecolor='b',
+            facecolor='none'
+        )
+        ax.add_patch(rect)
 
-    ax.imshow(t_image, cmap='gray')
+    ax.imshow(n_image, cmap='gray')
 
-    t_image = torch.tensor(np.asarray(t_image), dtype=torch.float32)
-
+    # t_image = torch.tensor(np.asarray(t_image), dtype=torch.float32)
+    # t_image = t_image.permute(2, 0, 1)
     bb = bounding_box_model(t_image[None, :]).detach().mean(axis=0)  # model(image[None, :]).detach().mean(axis=0)
     print(f"Model predicted (red): {bb}")
     x_min, y_min, x_max, y_max = bb
@@ -145,7 +147,8 @@ def resize_image_bb(image: PIL.Image, bb, sz):
 # Good one. Use with Pytorch Dataloader. Don't use the previous one
 
 class UFPRDataset(Dataset):
-    def __init__(self, dataset_dir, grayscale=None, resize=None):
+    def __init__(self, dataset_dir, normalize, grayscale=None, resize=None):
+        self.normalize = normalize
         self.resize = resize
         self.grayscale = grayscale
         self.dataset_dir = dataset_dir
@@ -162,21 +165,23 @@ class UFPRDataset(Dataset):
     def __getitem__(self, idx):
         img_path = id_to_filepath(self.ids[idx])
         image = np.asarray(Image.open(img_path))
+        print(image.shape)
         label = self.labels[str(self.ids[idx])]
 
         if self.resize:
             # computes new label (new bounding box coords) (from old image size) then resizes image
             label = label[0], mask_to_bb(self.resize(Image.fromarray(create_mask(label[1], image))))
             image = np.asarray(self.resize(Image.fromarray(image)))
-
+        print(image.shape)
         if self.grayscale:
             image = np.asarray(self.grayscale(Image.fromarray(image)))
-
+        toTensor = torchvision.transforms.ToTensor()
+        print(image.shape)
+        image = np.asarray(self.normalize(toTensor(image)))
+        print(image.shape)
         image = torch.tensor(image, dtype=torch.float32)
 
-        if not self.grayscale:
-            image = image.permute(2, 0, 1)
-
+        assert image.shape == (3, 500, 888), f"Image shape is {image.shape}"
         return image, label
 
     def _setup(self):
